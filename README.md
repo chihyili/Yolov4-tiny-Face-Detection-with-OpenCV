@@ -1,6 +1,6 @@
 # Yolov4-tiny-Face-Detection-with-OpenCV
 
-![image](images/show_inference.git)
+![image](https://github.com/chihyili/Yolov4-tiny-Face-Detection-with-OpenCV/tree/main/images/show_inference.git)
 
 ## Usage
 ```python
