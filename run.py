@@ -1,60 +1,58 @@
 import numpy as np
-import sys
-import os
 import cv2
-import glob
-import ipdb
-from pathlib import Path
-from model import yolo
+import argparse
 
+from model import yolov4-tiny
 
-config_file = "./config/config.cfg"
-
-# face detection
-model_path = "weight/fd_yolov4-tiny.weights"
 label = "face"
 
 # save output video 
 SAVE_RESULT_VID = True
+def parser():
+    parser = argparse.ArgumentParser(description="YOLO Face Detection")
+    parser.add_argument("--input", type=str,
+                        help="video source")
+    parser.add_argument("--out_filename", type=str, default="",
+                        help="inference video name. Not saved if empty")
+    parser.add_argument("--weights", default="./weights/FD_v1.weights",
+                        help="yolo weights path")
+    parser.add_argument("--config_file", default="./config/config.cfg",
+                        help="path to config file")
+    parser.add_argument("--dont_show", action='store_true',
+                        help="windown inference display")
+    return parser.parse_args()
 
-
-if len(sys.argv) != 2:
-    print("Please enter: python run_human_detection.py frame_folder")
-    exit()
-else:
-    frame_folder = sys.argv[1]
-
-
-yolo_detect = yolo.Yolo(model_path,config_file,label)
-
-folder = os.path.join(frame_folder,"*jpg")
-image_list  = glob.glob(folder)
-
-if SAVE_RESULT_VID:
-    image = cv2.imread(image_list[0])
-    image_out = yolo_detect.run(image)
-    w = image_out.shape[1]
-    h = image_out.shape[0]
-    fps = 30
+def set_saved_video(fps, out_filename):
     fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-    vid_out = cv2.VideoWriter('%s_detection.mp4'%label, fourcc, fps, (w, h), True)
-    
+    vid_out = cv2.VideoWriter(out_filename, fourcc, fps, (416, 416), True)
+    return vid_out
 
-for image_path in image_list:
+if __name__ == '__main__':
+    args = parser()
 
-    image = cv2.imread(image_path)
-    image_out = yolo_detect.run(image)
+    yolo_detect = yolov4-tiny.Yolo(args.weights, args.config_file, label)
+    capture = cv2.VideoCapture(args.input)
+    fps = capture.get(cv2.CAP_PROP_FPS)
 
+    if args.out_filename is not None:
+        vid_out = set_saved_video(fps, args.out_filename)
 
-    cv2.imshow("%s detectoin"%label,image_out)
-    if SAVE_RESULT_VID:
-        print(image_out.shape)
-        vid_out.write(image_out)
-    
-    key = cv2.waitKey(1)
-    if key == ord('q'):
-        cv2.destroyAllWindows()
-        vid_out.release()
-        break
+    if not capture.isOpened():
+        print("Cannot open video")
+        exit()
+    else:
+        while capture.isOpened():
+            ret, frame = capture.read()
+            if ret:
+                image_out = yolo_detect.run(frame)
+                if not args.dont_show:
+                    cv2.imshow("%s detectoin"%label, image_out)
+                    cv2.waitKey(1)
+                if args.out_filename is not None:
+                    vid_out.write(image_out)
+            else:
+                cv2.destroyAllWindows()
+                vid_out.release()
+                capture.release()
 
 
